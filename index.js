@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const app = express()
 const { MongoClient, ServerApiVersion, ObjectId, } = require('mongodb');
 const res = require('express/lib/response');
@@ -8,6 +9,27 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+
+function verifyToken(req, res, next) {
+    console.log("something")
+    const header = req.headers.authorization;
+    if (!header) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+    const token = header.split(' ')[1];
+    console.log(token);
+    jwt.verify(token, process.env.SECRET_ALGO, (err, decoded) => {
+        if (err) {
+            console.log(err);
+            return res.status(403).send({ message: 'Forbidden' });
+        }
+
+        console.log(decoded)
+        req.decoded = decoded;
+    })
+    next()
+}
 
 
 
@@ -21,6 +43,21 @@ const orderCollection = client.db("SpaceShip").collection("orders");
 const reviewCollection = client.db("SpaceShip").collection("reviews");
 const profileCollection = client.db("SpaceShip").collection("profile");
 
+const verifyAdmin = async(req, res, next) => {
+    const requester = req.decoded?.email;
+    console.log(requester)
+    const initatorAccount = await profileCollection.find({ email: requester });
+    if (initatorAccount.role === "admin") {
+      next();
+    }
+    else {
+      return res.status(403).send("Forbidden access");
+    }
+
+  }
+
+
+
 
 async function run() {
     try {
@@ -33,8 +70,10 @@ async function run() {
             res.send(result);
         });
 
+        
+
         //geting single part for purchase page
-        app.get('/parts/:id', async (req, res) => {
+        app.get('/parts/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await partCollection.findOne(query)
@@ -43,8 +82,10 @@ async function run() {
 
 
         //Posting an order
-        app.post('/orders', async (req, res) => {
+        app.post('/orders', verifyToken, async (req, res) => {
+
             const orders = req.body;
+
             const query = { email: orders.email, address: orders.address, name: orders.name }
             const exists = await orderCollection.findOne(query);
             if (exists) {
@@ -55,11 +96,13 @@ async function run() {
         })
 
         //Geting users Orders
-        app.get('/myOrders', async (req, res) => {
-            const query = {};
+        app.get('/myOrders/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
             const result = await orderCollection.find(query).toArray();
             res.send(result);
         });
+
 
         //detleting the orders. need to update later
         app.delete('/orders/:id', async (req, res) => {
@@ -67,7 +110,8 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const result = await orderCollection.deleteOne(query);
             res.send(result);
-        })
+        });
+
 
         //Add a Review
         app.post("/review", async (req, res) => {
@@ -79,19 +123,20 @@ async function run() {
             }
             const result = await reviewCollection.insertOne(review);
             return res.send({ success: true, result });
-        })
+        });
+
 
         //get all review for home 
         app.get('/review', async (req, res) => {
             const query = {};
             const result = await reviewCollection.find(query).toArray();
             res.send(result);
-        })
+        });
+
 
         //posting profile
         app.post('/profile', async (req, res) => {
             const profile = req.body;
-
             const query = { email: profile.review, phone: profile.phone, firstname: profile.firstname }
             const exists = await profileCollection.findOne(query);
             if (exists) {
@@ -99,7 +144,8 @@ async function run() {
             }
             const result = await profileCollection.insertOne(profile);
             return res.send({ success: true, result });
-        })
+        });
+
 
         //updating users profile
         app.put('/update/:email', async (req, res) => {
@@ -111,9 +157,84 @@ async function run() {
                 $set: profile,
             };
             const result = await profileCollection.updateOne(filter, updateDoc, options);
-            res.send({success: true, result});
-        })
+            res.send({ success: true, result });
+        });
 
+
+        // Implementing web token when user does authentication
+        app.post('/login',  async (req, res) => {
+            const user = req.body.email;
+            console.log(user);
+            const accessToken = jwt.sign(user, process.env.SECRET_ALGO, {
+                expiresIn: '1d'
+            })
+            res.send({ accessToken })
+        });
+        
+
+        //Get all prifile data for admin page
+        app.get('/admin', async(req, res) => {
+            const query = {};
+            const result = await profileCollection.find(query).toArray();
+            res.send(result);
+        });
+
+
+        //make admin
+        app.put('/admin/:email', verifyAdmin, verifyToken, async(req, res) => {
+            const email = req.params;
+            const filter = {email: email};
+            const updateDoc = {
+                $set: {role: "admin"}
+            }
+            const result = await profileCollection.updateOne(filter, updateDoc);
+            return res.send({result});
+        });
+
+
+        //getting Geting admin
+        app.get('/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = await profileCollection.findOne({ email: email });
+            const isAdmin = user.role === 'admin';
+            res.send({ admin: isAdmin })
+          })
+
+          //adding a product by admin
+          app.post('/addProduct', async(req, res) => {
+            const produtDetails = req.body;
+            const query = { price: produtDetails.price, picture: produtDetails.picture, name: produtDetails.name,}
+
+            const exists = await partCollection.findOne(query);
+            if (exists) {
+                return res.send({ success: false, booking: exists })
+            }
+            const result = await partCollection.insertOne(produtDetails);
+            return res.send({ success: true, result });
+          })
+
+          app.get("/manageProducts", async(req, res) => {
+              const query = {};
+              const result = await partCollection.find(query).toArray();
+              res.send(result);
+          });
+
+
+          //deleteng products from manage product page
+          app.delete('/manageProdutc/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await partCollection.deleteOne(query);
+            res.send(result);
+        });
+
+        //Geting a order for payment.
+        app.get("/payment/:id", async(req, res) => {
+            const id = req.params.id;
+            const query = {_id:ObjectId(id)};
+            const result = await orderCollection.findOne(query);
+            res.send(result);
+        })
 
 
 
