@@ -77,7 +77,7 @@ async function run() {
 
 
 
-        //geting single part for purchase page
+        //geting single part data for purchase page
         app.get('/parts/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
@@ -86,11 +86,9 @@ async function run() {
         });
 
 
-        //Posting an order
+        //Posting an order by user
         app.post('/orders', verifyToken, async (req, res) => {
-
             const orders = req.body;
-
             const query = { email: orders.email, address: orders.address, name: orders.name }
             const exists = await orderCollection.findOne(query);
             if (exists) {
@@ -268,7 +266,7 @@ async function run() {
                     transjactionId: payment.transactionId
                 }
             }
-            
+
             //const result = await paymentCollection.insertOne(UpdatedDoc);
             const updatedOrders = await orderCollection.updateOne(filter, UpdatedDoc)
             res.send(UpdatedDoc);
