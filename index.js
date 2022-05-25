@@ -33,8 +33,6 @@ function verifyToken(req, res, next) {
     next()
 }
 
-
-
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.nagee.mongodb.net/?retryWrites=true&w=majority`;
 
 
