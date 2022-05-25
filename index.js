@@ -12,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 
+
 function verifyToken(req, res, next) {
     console.log("something")
     const header = req.headers.authorization;
@@ -82,7 +83,7 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const result = await partCollection.findOne(query)
             res.send(result)
-        })
+        });
 
 
         //Posting an order
@@ -97,7 +98,7 @@ async function run() {
             }
             const result = await orderCollection.insertOne(orders);
             return res.send({ success: true, result });
-        })
+        });
 
         //Geting users Orders
         app.get('/myOrders/:email', async (req, res) => {
@@ -224,7 +225,6 @@ async function run() {
             res.send(result);
         });
 
-
         //deleteng products from manage product page
         app.delete('/manageProdutc/:id', async (req, res) => {
             const id = req.params.id;
@@ -271,6 +271,13 @@ async function run() {
             //   const result = await paymentCollection.insertOne(UpdatedDoc);
             const updatedOrders = await orderCollection.updateOne(filter, UpdatedDoc)
             res.send(UpdatedDoc);
+        })
+
+        //getting all orders.
+        app.get('/orders', async (req, res) => {
+            const query = {};
+            const result = await orderCollection.find(query).toArray();
+            res.send(result);
         })
 
 
