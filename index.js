@@ -288,6 +288,19 @@ async function run() {
             res.send(result)
         })
 
+        //geting single order for shipping.
+        app.put('/shipped/:id', async(req, res) => {
+            const id = req.params.id;
+            const status = req.body;
+            const filter = {_id:ObjectId(id)};
+            const options = {upsert: true};
+            const updatedDoc = {
+                $set: status
+            }
+            const result = await orderCollection.updateOne(filter, updatedDoc, options);
+            res.send({success: true, result});
+        })
+
 
 
     }
