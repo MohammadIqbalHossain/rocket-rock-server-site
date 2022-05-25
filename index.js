@@ -268,7 +268,8 @@ async function run() {
                     transjactionId: payment.transactionId
                 }
             }
-            //   const result = await paymentCollection.insertOne(UpdatedDoc);
+            
+            //const result = await paymentCollection.insertOne(UpdatedDoc);
             const updatedOrders = await orderCollection.updateOne(filter, UpdatedDoc)
             res.send(UpdatedDoc);
         })
