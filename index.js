@@ -59,16 +59,11 @@ const verifyAdmin = async (req, res, next) => {
 
 }
 
-
-
-
 async function run() {
     try {
         await client.connect();
 
-
-
-        // Getting all parts
+        // Getting all parts from the parts 
         app.get('/parts', async (req, res) => {
             const query = {}
             const result = await partCollection.find(query).toArray()
