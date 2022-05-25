@@ -6,6 +6,7 @@ const app = express()
 const { MongoClient, ServerApiVersion, ObjectId, } = require('mongodb');
 const res = require('express/lib/response');
 const port = process.env.PORT || 5000;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 
 app.use(cors());
 app.use(express.json());
@@ -42,19 +43,20 @@ const partCollection = client.db("SpaceShip").collection("Parts");
 const orderCollection = client.db("SpaceShip").collection("orders");
 const reviewCollection = client.db("SpaceShip").collection("reviews");
 const profileCollection = client.db("SpaceShip").collection("profile");
+const paymentCollection = client.db("SpaceShip").collection("payments");
 
-const verifyAdmin = async(req, res, next) => {
+const verifyAdmin = async (req, res, next) => {
     const requester = req.decoded?.email;
     console.log(requester)
     const initatorAccount = await profileCollection.find({ email: requester });
     if (initatorAccount.role === "admin") {
-      next();
+        next();
     }
     else {
-      return res.status(403).send("Forbidden access");
+        return res.status(403).send("Forbidden access");
     }
 
-  }
+}
 
 
 
@@ -63,14 +65,16 @@ async function run() {
     try {
         await client.connect();
 
-        //Getting all parts
+
+
+        // Getting all parts
         app.get('/parts', async (req, res) => {
             const query = {}
             const result = await partCollection.find(query).toArray()
             res.send(result);
         });
 
-        
+
 
         //geting single part for purchase page
         app.get('/parts/:id', verifyToken, async (req, res) => {
@@ -162,18 +166,18 @@ async function run() {
 
 
         // Implementing web token when user does authentication
-        app.post('/login',  async (req, res) => {
+        app.post('/login', async (req, res) => {
             const user = req.body.email;
-            console.log(user);
+            console.log("user", user);
             const accessToken = jwt.sign(user, process.env.SECRET_ALGO, {
-                expiresIn: '1d'
+
             })
             res.send({ accessToken })
         });
-        
+
 
         //Get all prifile data for admin page
-        app.get('/admin', async(req, res) => {
+        app.get('/admin', async (req, res) => {
             const query = {};
             const result = await profileCollection.find(query).toArray();
             res.send(result);
@@ -181,15 +185,16 @@ async function run() {
 
 
         //make admin
-        app.put('/admin/:email', verifyAdmin, verifyToken, async(req, res) => {
+        app.put('/admin/:email', verifyAdmin, verifyToken, async (req, res) => {
             const email = req.params;
-            const filter = {email: email};
+            const filter = { email: email };
             const updateDoc = {
-                $set: {role: "admin"}
+                $set: { role: "admin" }
             }
             const result = await profileCollection.updateOne(filter, updateDoc);
-            return res.send({result});
+            return res.send({ result });
         });
+
 
 
         //getting Geting admin
@@ -198,12 +203,12 @@ async function run() {
             const user = await profileCollection.findOne({ email: email });
             const isAdmin = user.role === 'admin';
             res.send({ admin: isAdmin })
-          })
+        })
 
-          //adding a product by admin
-          app.post('/addProduct', async(req, res) => {
+        //adding a product by admin
+        app.post('/addProduct', async (req, res) => {
             const produtDetails = req.body;
-            const query = { price: produtDetails.price, picture: produtDetails.picture, name: produtDetails.name,}
+            const query = { price: produtDetails.price, picture: produtDetails.picture, name: produtDetails.name, }
 
             const exists = await partCollection.findOne(query);
             if (exists) {
@@ -211,17 +216,17 @@ async function run() {
             }
             const result = await partCollection.insertOne(produtDetails);
             return res.send({ success: true, result });
-          })
+        })
 
-          app.get("/manageProducts", async(req, res) => {
-              const query = {};
-              const result = await partCollection.find(query).toArray();
-              res.send(result);
-          });
+        app.get("/manageProducts", async (req, res) => {
+            const query = {};
+            const result = await partCollection.find(query).toArray();
+            res.send(result);
+        });
 
 
-          //deleteng products from manage product page
-          app.delete('/manageProdutc/:id', async (req, res) => {
+        //deleteng products from manage product page
+        app.delete('/manageProdutc/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await partCollection.deleteOne(query);
@@ -229,11 +234,43 @@ async function run() {
         });
 
         //Geting a order for payment.
-        app.get("/payment/:id", async(req, res) => {
+        app.get("/payment/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id:ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await orderCollection.findOne(query);
             res.send(result);
+        })
+
+        // Calculating payment 
+        app.post('/create-payment-intent', async (req, res) => {
+            const service = req.body;
+            console.log(service);
+            const price = service?.priceNum;
+            const amount = price * 100;
+            console.log(amount);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ["card"]
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+        })
+
+        app.patch('/order/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const payment = req.body;
+            console.log(payment);
+            const filter = { _id: ObjectId(id) };
+            const UpdatedDoc = {
+                $set: {
+                    paid: true,
+                    transjactionId: payment.transactionId
+                }
+            }
+            //   const result = await paymentCollection.insertOne(UpdatedDoc);
+            const updatedOrders = await orderCollection.updateOne(filter, UpdatedDoc)
+            res.send(UpdatedDoc);
         })
 
 
