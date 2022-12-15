@@ -11,6 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 
+
 function verifyToken(req, res, next) {
     console.log("something")
     const header = req.headers.authorization;
@@ -186,7 +187,6 @@ async function run() {
         });
 
 
-
         //getting Geting admin
         app.get('/admin/:email', async (req, res) => {
             const email = req.params.email;
@@ -271,24 +271,24 @@ async function run() {
         })
 
         //gring a single item for deleting
-        app.delete('/unpaidOrder/:id', async(req, res) => {
+        app.delete('/unpaidOrder/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id:ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await orderCollection.deleteOne(query);
             res.send(result)
         })
 
         //geting single order for shipping.
-        app.put('/shipped/:id', async(req, res) => {
+        app.put('/shipped/:id', async (req, res) => {
             const id = req.params.id;
             const status = req.body;
-            const filter = {_id:ObjectId(id)};
-            const options = {upsert: true};
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
             const updatedDoc = {
                 $set: status
             }
             const result = await orderCollection.updateOne(filter, updatedDoc, options);
-            res.send({success: true, result});
+            res.send({ success: true, result });
         })
 
 
