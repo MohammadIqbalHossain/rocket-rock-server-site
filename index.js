@@ -1,14 +1,14 @@
-import express, { json } from 'express';
-import cors from 'cors';
+const express = require('express');
+const cors = require('cors');
 require('dotenv').config();
-import { verify, sign } from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 const app = express()
-import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
+const { MongoClient, ServerApiVersion, ObjectId, } = require('mongodb');
 const port = process.env.PORT || 5000;
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 
 app.use(cors());
-app.use(json());
+app.use(express.json());
 
 
 
@@ -20,7 +20,7 @@ function verifyToken(req, res, next) {
     }
     const token = header.split(' ')[1];
     console.log(token);
-    verify(token, process.env.SECRET_ALGO, (err, decoded) => {
+    jwt.verify(token, process.env.SECRET_ALGO, (err, decoded) => {
         if (err) {
             console.log(err);
             return res.status(403).send({ message: 'Forbidden' });
@@ -160,7 +160,7 @@ async function run() {
         app.post('/login', async (req, res) => {
             const user = req.body.email;
             console.log("user", user);
-            const accessToken = sign(user, process.env.SECRET_ALGO, {
+            const accessToken = jwt.sign(user, process.env.SECRET_ALGO, {
 
             })
             res.send({ accessToken })
