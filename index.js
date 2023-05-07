@@ -12,25 +12,25 @@ app.use(express.json());
 
 
 
-function verifyToken(req, res, next) {
-    console.log("something")
-    const header = req.headers.authorization;
-    if (!header) {
-        return res.status(401).send({ message: 'unauthorized access' });
-    }
-    const token = header.split(' ')[1];
-    console.log(token);
-    jwt.verify(token, process.env.SECRET_ALGO, (err, decoded) => {
-        if (err) {
-            console.log(err);
-            return res.status(403).send({ message: 'Forbidden' });
-        }
+// function verifyToken(req, res, next) {
+//     console.log("something")
+//     const header = req.headers.authorization;
+//     if (!header) {
+//         return res.status(401).send({ message: 'unauthorized access' });
+//     }
+//     const token = header.split(' ')[1];
+//     console.log(token);
+//     jwt.verify(token, process.env.SECRET_ALGO, (err, decoded) => {
+//         if (err) {
+//             console.log(err);
+//             return res.status(403).send({ message: 'Forbidden' });
+//         }
 
-        console.log(decoded)
-        req.decoded = decoded;
-    })
-    next()
-}
+//         console.log(decoded)
+//         req.decoded = decoded;
+//     })
+//     next()
+// }
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.nagee.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -43,18 +43,18 @@ const reviewCollection = client.db("SpaceShip").collection("reviews");
 const profileCollection = client.db("SpaceShip").collection("profile");
 const paymentCollection = client.db("SpaceShip").collection("payments");
 
-const verifyAdmin = async (req, res, next) => {
-    const requester = req.decoded?.email;
-    console.log(requester)
-    const initatorAccount = await profileCollection.find({ email: requester });
-    if (initatorAccount.role === "admin") {
-        next();
-    }
-    else {
-        return res.status(403).send("Forbidden access");
-    }
+// const verifyAdmin = async (req, res, next) => {
+//     const requester = req.decoded?.email;
+//     console.log(requester)
+//     const initatorAccount = await profileCollection.find({ email: requester });
+//     if (initatorAccount.role === "admin") {
+//         next();
+//     }
+//     else {
+//         return res.status(403).send("Forbidden access");
+//     }
 
-}
+// }
 
 async function run() {
     try {
@@ -69,8 +69,8 @@ async function run() {
 
 
 
-        //geting single part data for purchase page
-        app.get('/parts/:id', verifyToken, async (req, res) => {
+        //geting single part data for purchase page, verifyToken
+        app.get('/parts/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await partCollection.findOne(query)
@@ -78,8 +78,8 @@ async function run() {
         });
 
 
-        //Posting an order by user
-        app.post('/orders', verifyToken, async (req, res) => {
+        //Posting an order by user, verifyToken
+        app.post('/orders', async (req, res) => {
             const orders = req.body;
             const query = { email: orders.email, address: orders.address, name: orders.name }
             const exists = await orderCollection.findOne(query);
@@ -175,8 +175,8 @@ async function run() {
         });
 
 
-        //make admin
-        app.put('/admin/:email', verifyAdmin, verifyToken, async (req, res) => {
+        //make admin, verifyAdmin, verifyToken, 
+        app.put('/admin/:email', async (req, res) => {
             const email = req.params;
             const filter = { email: email };
             const updateDoc = {
